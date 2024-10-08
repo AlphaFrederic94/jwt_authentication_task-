@@ -21,7 +21,7 @@ async def get_grades(current_user = Depends(get_current_user)):
 @router.put("/grades/{student_id}")
 async def update_grades(student_id: int, grade: Grade, current_user = Depends(get_current_user)):
     # Check if the user is a teacher
-    if current_user[3] != 'teacher':
+    if current_user[1] != 'teacher':
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Post or update the student's grades in the database
