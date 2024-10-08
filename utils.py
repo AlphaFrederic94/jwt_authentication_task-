@@ -6,6 +6,8 @@ from fastapi.security import OAuth2PasswordBearer
 from database import cursor
 import sqlite3
 
+
+
 # Password hashing setup
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

@@ -9,7 +9,8 @@ def create_tables():
     cursor.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY, 
         username TEXT UNIQUE, 
-        password TEXT, 
+        email TEXT ,           
+        password TEXT NOT NULL, 
         role TEXT)''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS grades (

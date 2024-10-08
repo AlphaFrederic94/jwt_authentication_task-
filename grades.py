@@ -18,14 +18,20 @@ async def get_grades(current_user = Depends(get_current_user)):
     return Grade(pure_maths=grades[0], chemistry=grades[1], biology=grades[2], computer_science=grades[3], physics=grades[4])
 
 # Update grades (accepts and returns JSON)
-@router.put("/grades/{student_id}", response_model=dict)
+@router.put("/grades/{student_id}")
 async def update_grades(student_id: int, grade: Grade, current_user = Depends(get_current_user)):
+    # Check if the user is a teacher
     if current_user[3] != 'teacher':
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    cursor.execute("UPDATE grades SET pure_maths=?, chemistry=?, biology=?, computer_science=?, physics=? WHERE student_id=?", 
-                   (grade.pure_maths, grade.chemistry, grade.biology, grade.computer_science, grade.physics, student_id))
+    # Post or update the student's grades in the database
+    cursor.execute("""
+        INSERT OR REPLACE INTO grades (student_id, pure_maths, chemistry, biology, computer_science, physics) 
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, 
+        (student_id, grade.pure_maths, grade.chemistry, grade.biology, grade.computer_science, grade.physics))
     conn.commit()
+
     return {"message": "Grades updated successfully"}
 
 # Get top students (returns JSON)
