@@ -1,1 +1,0 @@
-#Configuration  for jwt settings and DB
