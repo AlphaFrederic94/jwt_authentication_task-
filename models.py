@@ -1,12 +1,23 @@
-from pydantic import BaseModel,EmailStr, Field
-from pydantic import  root_validator
+from pydantic import BaseModel, EmailStr, Field, validator
+from datetime import date, datetime
 
 class User(BaseModel):
-    username: str
+    firstName: str
+    lastName: str
     password: str
-    role:str
+    role: str
+    dateOfBirth: date
     email: EmailStr
-    confirm_password: str
+
+    @validator('dateOfBirth', pre=True)
+    def parse_date_of_birth(cls, value):
+        if isinstance(value, str):  # Check if the input is a string
+            try:
+                # Try parsing MM/DD/YYYY format
+                return datetime.strptime(value, '%m/%d/%Y').date()
+            except ValueError:
+                raise ValueError("Date of Birth must be in MM/DD/YYYY format")
+        return value
 
 class Token(BaseModel):
     access_token: str
@@ -18,11 +29,3 @@ class Grade(BaseModel):
     biology: float
     computer_science: float
     physics: float
-
-    @root_validator(pre=True)
-    def check_passwords_match(cls,values):
-        password=values.get("password")
-        confirm_password=values.get("confirm_password")
-        if password != confirm_password:
-            raise ValueError("Password do not match")
-        return values

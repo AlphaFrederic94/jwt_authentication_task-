@@ -7,11 +7,14 @@ cursor = conn.cursor()
 def create_tables():
     # Create users and grades tables if they don't exist
     cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY, 
-        username TEXT UNIQUE, 
-        email TEXT ,           
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        firstName TEXT NOT NULL,
+        lastName TEXT NOT NULL,
+        email TEXT UNIQUE,  
         password TEXT NOT NULL, 
-        role TEXT)''')
+        dateOfBirth DATE,   
+        role TEXT DEFAULT 'student'  
+        )''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS grades (
         student_id INTEGER, 
@@ -20,6 +23,9 @@ def create_tables():
         biology REAL, 
         computer_science REAL, 
         physics REAL, 
-        FOREIGN KEY(student_id) REFERENCES users(id))''')
+        FOREIGN KEY(student_id) REFERENCES users(id) ON DELETE CASCADE)''')
     
     conn.commit()
+
+# Call the function to create tables
+create_tables()
