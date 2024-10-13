@@ -72,14 +72,39 @@ async def get_all_students(current_user = Depends(get_current_user)):
     HTTPException(status_code=404,detail="No students found")
     return[{"email":student[0],"firstName":student[1] ,"lastName":student[2],"dateOfbirth":student[3]} for student in students]
 
-# to edit a particular student in the database with the password
 
+@router.delete("/students/{student_id}")
+async def delete_student(student_id: int, current_user=Depends(get_current_user)):
+        if current_user[1]!='teacher':
+            raise HTTPException(status_code=406,detail="Not authorized to delete a student")
+        
+        cursor.execute("SELECT * FROM users WHERE id = ?",(student_id,))
+        student = cursor.fetchone()
+        if not student:
+            raise HTTPException(status_code=407, detail="student not found")
+        
+        #delete the student from the table users
+        try:
+            cursor.execute("DELETE FROM users WHERE id = ?",(student_id,))
+            conn.commit()
+
+            #also we delete the student gradesfrom the table grades
+
+            cursor.execute("DELETE FROM grades WHERE student_id = ?",(student_id,))
+            conn.commit()
+
+            return {"message":" Student and their grades have been succesfully deleted"}
+        except sqlite3.Error as e:
+            raise HTTPException(status_code=500, detail=f"an error occured:{str(e)}")
+
+
+# to edit a particular student in the database with the password
 
 #still working on this part
 
 
 @router.put("/students/{student_id}")
-async def update_student(student_id: int, updated_student: User, new_password:str = None, current_user= Depends(get_current_user)):
+async def update_student(student_id: int, update_student:User, new_password:str = None, current_user= Depends(get_current_user)):
     # Check if the user is a teacher
     if current_user[1] != 'teacher':
         raise
@@ -99,11 +124,13 @@ async def update_student(student_id: int, updated_student: User, new_password:st
         hashed_password= student[4]
    
     try:
-        cursor.execute ("""UPDATE users SET firstName = ?, lastName = ?, dateOfbirth = ?, password = ?  WHERE id = ?"""
-                        ,(update_student.firstName,update_student.lastName,update_student.email,update_student.dateOfbirth,update_student.password, student_id))
+        cursor.execute ("""UPDATE users SET firstName = ?, lastName = ?, dateOfbirth = ?, password = ? ,email= ?, WHERE id = ?"""
+                        ,(update_student.firstName,update_student.lastName,update_student.email,update_student.dateOfBirth,update_student.password, student_id))
         conn.commit()
 
         return{"message": "student updated succesfully"}
     except sqlite3.Error as e:
-        raise
-    HTTPException(status_code=500, detail="Failed to update student:{str(e)}")   
+        
+       raise HTTPException(status_code=500, detail=f"Failed to update student:{str(e)}")   
+
+
