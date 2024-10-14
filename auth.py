@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
-from models import User, Token
+from models import User, Token, UserResponse, UserUpdate
 from utils import create_access_token, get_password_hash, verify_password, get_current_user
 from database import cursor, conn  # SQLite connection
 import sqlite3
 from pydantic import EmailStr
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 SECRET_KEY = "8d9d1e837bc56b07f7e1db15fe3a69b02b8c3a8f7f9261dcb7f556b5261a97ba"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 router = APIRouter()
 
@@ -107,7 +107,7 @@ async def delete_student(student_id: int, current_user=Depends(get_current_user)
 
 
 @router.put("/students/{student_id}")
-async def update_student(student_id: int, update_student:User, new_password:str = None, current_user= Depends(get_current_user)):
+async def update_student(student_id: int, update_student:UserUpdate, current_user= Depends(get_current_user)):
     # Check if the user is a teacher
     if current_user[1] != 'teacher':
         raise
@@ -119,16 +119,9 @@ async def update_student(student_id: int, update_student:User, new_password:str 
         raise
     HTTPException(status_code=406,detail="student not found")
 
-    #we check if a new password have been provided then hash it
-
-    if new_password:
-        hashed_password= get_password_hash(new_password)
-    else:
-        hashed_password= student[4]
-   
     try:
-        cursor.execute ("""UPDATE users SET firstName = ?, lastName = ?, dateOfBirth = ?, password = ? ,email= ?, WHERE id = ?"""
-                        ,(update_student.firstName,update_student.lastName,update_student.email,update_student.dateOfBirth,update_student.password, student_id))
+        cursor.execute ("""UPDATE users SET firstName = ?, lastName = ?, dateOfBirth = ?,email= ? WHERE id = ?"""
+                        ,(update_student.firstName,update_student.lastName,update_student.dateOfBirth,update_student.email,student_id))
         conn.commit()
 
         return{"message": "student updated succesfully"}
@@ -136,5 +129,46 @@ async def update_student(student_id: int, update_student:User, new_password:str 
         
        raise HTTPException(status_code=500, detail=f"Failed to update student:{str(e)}")   
 
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(user_id: int, current_user = Depends(get_current_user)):
+    # Check if the current user is authorized
+    if current_user[1] != 'teacher':
+        raise HTTPException(status_code=403, detail="Not authorized")
 
-# "email":user[3],"dateOfbirth":user[5],
+    # Fetch user by ID from the database
+    cursor.execute("SELECT id, email, firstName, lastName, dateOfBirth, role FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    dob = datetime.strptime(user[4], "%Y-%m-%d").strftime("%m/%d/%Y")
+
+    # Return the user data
+    return {
+        "id": user[0],
+        "email": user[1],
+        "firstName": user[2],
+        "lastName": user[3],
+        "dateOfBirth": dob,
+        "role": user[5],
+    }
+    
+@router.get("/teacher")
+async def get_all_teacher(current_user = Depends(get_current_user)):
+    print(current_user)
+    # we check if the user is a teacher
+    if current_user[1] != 'teacher':
+        raise
+    HTTPException(status_code=403,detail="Not authorized")
+
+    try:
+        cursor.execute("""SELECT id, email, firstName, lastName, dateOfBirth FROM users WHERE role = 'teacher'""")
+        teachers = cursor.fetchall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query failed: {str(e)}")
+
+    if not teachers:
+        raise HTTPException(status_code=404, detail="No teachers found")
+
+    return [{"id": teacher[0], "email": teacher[1], "firstName": teacher[2], "lastName": teacher[3], "dateOfBirth": teacher[4] } for teacher in teachers]

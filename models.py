@@ -19,6 +19,20 @@ class User(BaseModel):
                 raise ValueError("Date of Birth must be in MM/DD/YYYY format")
         return value
 
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    firstName: str
+    lastName: str
+    dateOfBirth: str
+    role: str
+    
+class UserUpdate(BaseModel):
+    email: str
+    firstName: str
+    lastName: str
+    dateOfBirth: str
+    
 class Token(BaseModel):
     access_token: str
     token_type: str
