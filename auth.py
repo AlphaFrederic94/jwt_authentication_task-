@@ -48,7 +48,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user[3]},  # Assuming user[3] is the email column
+        data={"email":user[3], "role":user[6]},  # Assuming user[3] is the email column
         expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -58,24 +58,27 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.get("/students")
 async def get_all_students(current_user = Depends(get_current_user)):
-
+    print(current_user)
     # we check if the user is a teacher
     if current_user[1] != 'teacher':
         raise
     HTTPException(status_code=403,detail="Not authorized")
 
-    cursor.execute("""SELECT email, firstName,lastName,dateOfbirth From users""")
-    students = cursor.fetchall()
+    try:
+        cursor.execute("""SELECT id, email, firstName, lastName, dateOfBirth FROM users WHERE role = 'student'""")
+        students = cursor.fetchall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query failed: {str(e)}")
 
     if not students:
-        raise
-    HTTPException(status_code=404,detail="No students found")
-    return[{"email":student[0],"firstName":student[1] ,"lastName":student[2],"dateOfbirth":student[3]} for student in students]
+        raise HTTPException(status_code=404, detail="No students found")
+    
+    return [{"id": student[0], "email": student[1], "firstName": student[2], "lastName": student[3], "dateOfBirth": student[4] } for student in students]
 
 
 @router.delete("/students/{student_id}")
 async def delete_student(student_id: int, current_user=Depends(get_current_user)):
-        if current_user[1]!='teacher':
+        if current_user[1] !='teacher':
             raise HTTPException(status_code=406,detail="Not authorized to delete a student")
         
         cursor.execute("SELECT * FROM users WHERE id = ?",(student_id,))
@@ -88,12 +91,12 @@ async def delete_student(student_id: int, current_user=Depends(get_current_user)
             cursor.execute("DELETE FROM users WHERE id = ?",(student_id,))
             conn.commit()
 
-            #also we delete the student gradesfrom the table grades
+            #also we delete the student grades from the table grades
 
             cursor.execute("DELETE FROM grades WHERE student_id = ?",(student_id,))
             conn.commit()
 
-            return {"message":" Student and their grades have been succesfully deleted"}
+            return {"message":" Student and their grades have been successfully deleted"}
         except sqlite3.Error as e:
             raise HTTPException(status_code=500, detail=f"an error occured:{str(e)}")
 
@@ -134,3 +137,4 @@ async def update_student(student_id: int, update_student:User, new_password:str 
        raise HTTPException(status_code=500, detail=f"Failed to update student:{str(e)}")   
 
 
+# "email":user[3],"dateOfbirth":user[5],
