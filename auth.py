@@ -76,6 +76,28 @@ async def get_all_students(current_user = Depends(get_current_user)):
     return [{"id": student[0], "email": student[1], "firstName": student[2], "lastName": student[3], "dateOfBirth": student[4] } for student in students]
 
 
+
+@router.get("/teacher")
+async def get_all_teacher(current_user = Depends(get_current_user)):
+    print(current_user)
+    # we check if the user is a teacher
+    if current_user[1] != 'teacher':
+        raise
+    HTTPException(status_code=403,detail="Not authorized")
+
+    try:
+        cursor.execute("""SELECT id, email, firstName, lastName, dateOfBirth FROM users WHERE role = 'teacher'""")
+        teachers = cursor.fetchall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query failed: {str(e)}")
+
+    if not teachers:
+        raise HTTPException(status_code=404, detail="No teachers found")
+    
+    return [{"id": teacher[0], "email": teacher[1], "firstName": teacher[2], "lastName": teacher[3], "dateOfBirth": teacher[4] } for teacher in teachers]
+
+
+
 @router.delete("/students/{student_id}")
 async def delete_student(student_id: int, current_user=Depends(get_current_user)):
         if current_user[1] !='teacher':
