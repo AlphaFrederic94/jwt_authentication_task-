@@ -127,7 +127,7 @@ async def update_student(student_id: int, update_student:User, new_password:str 
         hashed_password= student[4]
    
     try:
-        cursor.execute ("""UPDATE users SET firstName = ?, lastName = ?, dateOfbirth = ?, password = ? ,email= ?, WHERE id = ?"""
+        cursor.execute ("""UPDATE users SET firstName = ?, lastName = ?, dateOfBirth = ?, password = ? ,email= ?, WHERE id = ?"""
                         ,(update_student.firstName,update_student.lastName,update_student.email,update_student.dateOfBirth,update_student.password, student_id))
         conn.commit()
 
