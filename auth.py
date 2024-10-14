@@ -42,9 +42,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email ")  # Email not found
     
-    # Assuming user[] is the hashed password in the database
+    # Assuming user[4] is the hashed password in the database
     if not verify_password(form_data.password, user[4]):
-        raise HTTPException(status_code=400, detail="Incorrect email or password")  # Incorrect password
+        raise HTTPException(status_code=400, detail="Incorrect password")  # Incorrect password
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -129,34 +129,35 @@ async def delete_student(student_id: int, current_user=Depends(get_current_user)
 
 
 @router.put("/students/{student_id}")
-async def update_student(student_id: int, update_student:User, new_password:str = None, current_user= Depends(get_current_user)):
-    # Check if the user is a teacher
+async def update_profile(user_update: User, current_user = Depends(get_current_user)):
     if current_user[1] != 'teacher':
-        raise
-    HTTPException(status_code=405,detail="Not authorized")
-
-    cursor.execute("SELECT * FROM users WHERE id = ?" ,(student_id,))
-    student = cursor.fetchone()
-    if not student:
-        raise
-    HTTPException(status_code=406,detail="student not found")
-
-    #we check if a new password have been provided then hash it
-
-    if new_password:
-        hashed_password= get_password_hash(new_password)
-    else:
-        hashed_password= student[4]
-   
+        raise HTTPException(status_code=403, detail="Only teachers can update their own profile")
+    
     try:
-        cursor.execute ("""UPDATE users SET firstName = ?, lastName = ?, dateOfbirth = ?, password = ? ,email= ?, WHERE id = ?"""
-                        ,(update_student.firstName,update_student.lastName,update_student.email,update_student.dateOfBirth,update_student.password, student_id))
-        conn.commit()
-
-        return{"message": "student updated succesfully"}
-    except sqlite3.Error as e:
+        updates = {}
+        if user_update.firstName:
+            updates['firstName'] = user_update.firstName
+        if user_update.lastName:
+            updates['lastName'] = user_update.lastName
+        if user_update.email:
+            updates['email'] = user_update.email
+        if user_update.dateOfBirth:
+            updates['dateOfBirth'] = user_update.dateOfBirth
+        if user_update.password:
+            updates['password'] = get_password_hash(user_update.password)
         
-       raise HTTPException(status_code=500, detail=f"Failed to update student:{str(e)}")   
+        if not updates:
+            raise HTTPException(status_code=400, detail="No updates provided")
+        
+        set_clause = ", ".join(f"{key} = ?" for key in updates)
+        query = f"UPDATE users SET {set_clause} WHERE email = ?"
+        
+        cursor.execute(query, (*updates.values(), current_user[0]))
+        conn.commit()
+        
+        return {"message": "Profile updated successfully"}
+    except sqlite3.Error as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
 
 
 # "email":user[3],"dateOfbirth":user[5],

@@ -9,7 +9,7 @@ router = APIRouter()
 # still working on this part
 @router.get("/grades", response_model=Grade)
 async def get_grades(current_user = Depends(get_current_user)):
-    if current_user[3] != 'student':
+    if current_user[1] != 'student':
         raise HTTPException(status_code=403, detail="Not authorized")
     
     cursor.execute("SELECT pure_maths, chemistry, biology, computer_science, physics FROM grades WHERE student_id=?", (current_user[0],))
